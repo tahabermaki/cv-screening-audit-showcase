@@ -1,4 +1,4 @@
-# CV Screening Audit — pré-lire des CV avec un LLM, et prouver qu'il est équitable
+# CV Screening Audit — pré-lire des CV avec un LLM, l'auditer et le gouverner
 
 **Un assistant de pré-lecture de CV qui anonymise avant d'analyser, justifie chaque point fort par une citation vérifiée, et ne décide jamais à la place d'un humain. Avec un audit qui mesure ce que la plupart des outils se contentent d'affirmer : la note change-t-elle quand seul le nom du candidat change ?**
 
@@ -6,7 +6,7 @@
 
 > Cette page est une **vitrine** : elle présente le projet, la méthode et les résultats. Le code source est privé. Une démonstration en direct est possible sur demande. Toutes les personnes, entreprises et données montrées sont **fictives**.
 
-Python 3.11 · FastAPI · Claude (Anthropic) · Pydantic · 74 tests automatisés
+Python 3.11 · FastAPI · Claude (Anthropic) · Pydantic · 101 tests automatisés · version 0.3.0
 
 ---
 
@@ -27,17 +27,23 @@ Le règlement européen sur l'IA (AI Act) classe d'ailleurs les systèmes d'IA u
 
 Le but est de **donner sa chance à tous les dossiers**, y compris ceux qui seraient noyés dans la pile : l'outil aide à lire dans le bon ordre et prépare les questions, c'est un recruteur qui décide.
 
-## Les trois vues
+## Les quatre étapes
 
 **1. Anonymisation** : le texte exact envoyé au modèle, avec les éléments masqués surlignés et le rapport de masquage par catégorie.
 
 ![Vue anonymisation](assets/02-anonymisation.png)
 
-**2. Évaluation** : score global, 4 piliers, points forts marqués ✓ (citation retrouvée dans le CV) ou ? (non retrouvée, à vérifier à la main), citation surlignée dans le CV, manques, questions d'entretien et bandeau « Revue humaine requise ».
+**2. Évaluation** : score global, 4 piliers, points forts marqués ✓ (citation retrouvée dans le CV) ou ? (non retrouvée, à vérifier à la main), citation surlignée dans le CV, manques, questions d'entretien. En bas, **la décision du recruteur** : retenir, à revoir ou ne pas retenir, avec une justification obligatoire, inscrite au journal à côté du score de l'IA.
 
-**3. Audit** : le bruit du modèle, l'écart dû au nom avec et sans anonymisation, les décisions qui basculent et la part de citations vérifiées.
+![Vue évaluation et décision du recruteur](assets/03-evaluation.png)
+
+**3. Audit** : le bruit du modèle, l'écart dû au nom avec et sans anonymisation, les décisions qui basculent et la part de citations vérifiées, avec un rapport téléchargeable.
 
 ![Vue audit](assets/04-audit.png)
+
+**4. Gouvernance** : la fiche du système (finalité, usages interdits, classification, modèle et version du prompt, données masquées et conservées, limites), une grille de conformité AI Act et RGPD qui distingue ce que l'outil couvre de ce qui relève de l'entreprise, et le journal de traçabilité exportable.
+
+![Vue gouvernance](assets/06-gouvernance.png)
 
 Le front fonctionne aussi sur mobile, et un **mode démo** permet de tout essayer sans clé API (les réponses du modèle y sont des exemples écrits à la main, clairement étiquetés « données de démo »).
 
@@ -92,6 +98,19 @@ Mesurés le 6 novembre 2026 avec `claude-haiku-5-5`, sur 4 CV fictifs, 5 évalua
 - Le seul basculement de décision (scores de 62 à 67 autour du seuil de 65) est dans la zone de bruit. C'est précisément pour cela que l'outil ne rejette jamais et garde un humain dans la boucle.
 - Ces chiffres montrent que le modèle **n'est pas parfaitement stable** et justifient de mesurer. Ils ne prouvent **pas** l'absence de biais : l'échantillon est petit.
 
+## Gouvernance : de l'audit à la conformité
+
+Un audit ponctuel ne suffit pas : il faut pouvoir **reconstituer** chaque évaluation, **prouver** qu'un humain a décidé, et **dire clairement** ce que l'outil ne couvre pas. L'outil le fait de quatre façons :
+
+| Contrôle | Ce qu'il apporte | Exigence visée |
+|---|---|---|
+| **Fiche du système** | Finalité, usages interdits, modèle et version du prompt, pondérations, limites | Transparence (AI Act, art. 13) et documentation (art. 11) |
+| **Journal de traçabilité** | Chaque évaluation, audit et décision est horodaté ; le CV n'est jamais conservé, seule une empreinte du texte anonymisé l'est | Journalisation (AI Act, art. 12) ; minimisation (RGPD, art. 5) |
+| **Décision du recruteur** | Aucun rejet automatique ; décision humaine justifiée, à côté du score de l'IA | Contrôle humain (AI Act, art. 14) ; RGPD, art. 22 |
+| **Grille de conformité** | Chaque exigence marquée « couvert », « partiel » ou « relève de l'entreprise » (analyse d'impact, information des candidats, formation, conservation des journaux) | Vue d'ensemble honnête |
+
+Le recrutement est un usage **à haut risque** au sens de l'AI Act (annexe III), avec des obligations applicables à partir du 2 décembre 2027 depuis le règlement « Digital Omnibus ». L'outil ne rend pas un usage conforme à lui seul : il fournit les contrôles techniques et les preuves. Ce n'est pas un avis juridique.
+
 ## Choix techniques et compromis
 
 | Décision | Pourquoi | Ce que ça coûte |
@@ -102,6 +121,8 @@ Mesurés le 6 novembre 2026 avec `claude-haiku-5-5`, sur 4 CV fictifs, 5 évalua
 | **Citations obligatoires, vérifiées par le code** | Un point fort sans preuve n'est pas une information. La vérification tolère les accents et les coquilles. | Une vraie compétence mal citée peut être marquée non vérifiée. |
 | **Bruit mesuré plutôt que supposé nul** | Les modèles récents refusent le réglage de température : on ne peut pas forcer le déterminisme, donc on mesure l'instabilité et on s'en sert d'étalon. | Quelques appels de plus par audit. |
 | **Aucun seuil d'élimination** | Le seul signal est « à examiner en priorité ». Chaque dossier reste lu par un humain. | Le gain de temps vient de l'ordre de lecture et des questions préparées, pas d'un tri automatique. |
+| **Audit tolérant aux pannes** | Un appel en échec est écarté et signalé au lieu d'interrompre tout l'audit ; une réponse incomplète est relancée une fois. | Les mesures portent parfois sur un peu moins d'appels, et l'écran le dit. |
+| **Journal JSON Lines, sans base de données** | Simple à relire, à exporter et à expliquer ; aucun CV stocké. | Pas de recherche avancée dans l'historique. |
 | **Front sans framework** | Une page, du JavaScript natif, aucune étape de build : simple à relire et à expliquer. | Moins de confort qu'un framework pour des écrans plus riches. |
 
 ## Limites connues
